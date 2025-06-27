@@ -1,2 +1,33 @@
 /* For information on how to create your own theme, please see:
 http://ionicframework.com/docs/theming/ */
+/* DARK MODE THEME VARIABLES */
+/* Dark mode theme variables */
+body.dark {
+  --ion-background-color: #121212;
+  --ion-text-color: #f0f0f0;
+  --ion-color-step-50: #1e1e1e;
+  --ion-color-step-100: #2a2a2a;
+  --ion-item-background: #1f1f1f;
+  --ion-toolbar-background: #1c1c1c;
+  --ion-card-background: #1d1d1d;
+}
+.dark-toggle {
+  position: fixed;
+  bottom: 70px; /* Raised above the nav bar */
+  right: 20px;
+  z-index: 10000;
+  background-color: var(--ion-toolbar-background);
+  border-radius: 50%;
+  padding: 6px; /* Smaller padding for smaller button */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: background-color 0.3s ease;
+}
+
+/* Adjust on very small screens if needed */
+@media (max-width: 400px) {
+  .dark-toggle {
+    bottom: 50px; /* maybe a bit closer */
+    right: 12px;
+    padding: 5px;
+  }
+}
