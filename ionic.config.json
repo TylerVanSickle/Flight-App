@@ -1,0 +1,7 @@
+{
+  "name": "pilot-toolbox",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "react-vite"
+}
