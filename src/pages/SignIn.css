@@ -93,3 +93,23 @@
 .signin-switch-mode button:hover {
   color: var(--ion-color-primary-shade, #2c6dde);
 }
+.signin-forgot {
+  text-align: center;
+  margin: 0.5rem 0;
+}
+
+.forgot-password-button {
+  background: none;
+  border: none;
+  color: var(--ion-color-primary, #3880ff);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.forgot-password-button:hover {
+  color: var(--ion-color-primary-shade, #2c6dde);
+  text-decoration: underline;
+}

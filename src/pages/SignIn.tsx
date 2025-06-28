@@ -1,4 +1,3 @@
-// src/pages/SignIn.tsx
 import React, { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useHistory } from "react-router-dom";
@@ -12,16 +11,17 @@ const SignIn: React.FC<SignInProps> = ({ onSignInSuccess }) => {
   const history = useHistory();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [signedUp, setSignedUp] = useState(false); // to track sign-up success message
 
-  // Email format validator
   const isValidEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
-  // Ensure user record exists in your 'users' table
   const ensureUserRecord = async () => {
     const {
       data: { user },
@@ -39,7 +39,6 @@ const SignIn: React.FC<SignInProps> = ({ onSignInSuccess }) => {
       .eq("id", user.id)
       .single();
 
-    // PGRST116 = no rows found, which is okay here
     if (selectError && selectError.code !== "PGRST116") {
       console.error("Error checking user existence:", selectError);
       return false;
@@ -50,6 +49,8 @@ const SignIn: React.FC<SignInProps> = ({ onSignInSuccess }) => {
         {
           id: user.id,
           email: user.email,
+          first_name: firstName,
+          last_name: lastName,
           created_at: new Date().toISOString(),
         },
       ]);
@@ -75,6 +76,14 @@ const SignIn: React.FC<SignInProps> = ({ onSignInSuccess }) => {
       return;
     }
 
+    if (mode === "signup") {
+      if (!firstName.trim() || !lastName.trim()) {
+        setErrorMsg("Please enter your full name.");
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({
@@ -83,48 +92,39 @@ const SignIn: React.FC<SignInProps> = ({ onSignInSuccess }) => {
         });
         if (error) throw error;
 
-        // Ensure user record on sign in
         const success = await ensureUserRecord();
         if (!success)
           throw new Error("Failed to ensure user record on sign-in");
+
+        if (onSignInSuccess) onSignInSuccess();
+        history.push("/home"); // redirect after successful sign-in
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/reset-password`,
+          },
         });
         if (error) throw error;
 
         if (data.user) {
-          // Insert a new profile for the user in 'profiles' table
           const { error: profileError } = await supabase
             .from("profiles")
             .upsert({
               id: data.user.id,
-              username: email.split("@")[0], // example default username
-              full_name: "",
+              username: email.split("@")[0],
+              full_name: `${firstName} ${lastName}`,
               avatar_url: "",
             });
           if (profileError) {
             console.error("Error creating profile:", profileError);
           }
 
-          // Explicitly sign in user after sign-up to create session
-          const { error: signInError } = await supabase.auth.signInWithPassword(
-            {
-              email,
-              password,
-            }
-          );
-          if (signInError) throw signInError;
-
-          // Ensure user record after sign-in
-          const success = await ensureUserRecord();
-          if (!success)
-            throw new Error("Failed to ensure user record on sign-up");
+          // Show message and prevent auto sign-in or redirect
+          setSignedUp(true);
         }
       }
-      if (onSignInSuccess) onSignInSuccess();
-      history.push("/home"); // Redirect to Home after successful sign in/up
     } catch (error: unknown) {
       if (error instanceof Error) {
         setErrorMsg(error.message);
@@ -136,9 +136,56 @@ const SignIn: React.FC<SignInProps> = ({ onSignInSuccess }) => {
     }
   };
 
+  const handleForgotPassword = async () => {
+    setErrorMsg(null); // clear previous messages
+
+    if (!isValidEmail(email)) {
+      setErrorMsg("Please enter your email to reset password.");
+      return;
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
+      setErrorMsg("Password reset email sent! Check your inbox.");
+    }
+  };
+
   return (
     <div className="signin-container">
       <h2>{mode === "signin" ? "Sign In" : "Sign Up"}</h2>
+
+      {mode === "signup" && !signedUp && (
+        <>
+          <label htmlFor="firstName" className="signin-label">
+            First Name
+          </label>
+          <input
+            id="firstName"
+            type="text"
+            placeholder="First name"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            className="signin-input"
+          />
+
+          <label htmlFor="lastName" className="signin-label">
+            Last Name
+          </label>
+          <input
+            id="lastName"
+            type="text"
+            placeholder="Last name"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            className="signin-input"
+          />
+        </>
+      )}
 
       <label htmlFor="email" className="signin-label">
         Email
@@ -150,6 +197,7 @@ const SignIn: React.FC<SignInProps> = ({ onSignInSuccess }) => {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         className="signin-input"
+        disabled={signedUp} // disable inputs after signup success to prevent changes
       />
 
       <label htmlFor="password" className="signin-label">
@@ -162,17 +210,48 @@ const SignIn: React.FC<SignInProps> = ({ onSignInSuccess }) => {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         className="signin-input"
+        disabled={signedUp}
       />
+
+      {mode === "signin" && (
+        <div className="signin-forgot">
+          <button
+            type="button"
+            className="forgot-password-button"
+            onClick={handleForgotPassword}
+            disabled={loading}
+          >
+            Forgot Password?
+          </button>
+        </div>
+      )}
 
       {errorMsg && <div className="signin-error">{errorMsg}</div>}
 
-      <button
-        onClick={handleAuth}
-        disabled={loading || !email || !password}
-        className="signin-button"
-      >
-        {loading ? "Please wait..." : mode === "signin" ? "Sign In" : "Sign Up"}
-      </button>
+      {signedUp && (
+        <div className="signin-success">
+          Sign-up successful! Please check your email to confirm your account.
+        </div>
+      )}
+
+      {!signedUp && (
+        <button
+          onClick={handleAuth}
+          disabled={
+            loading ||
+            !email ||
+            !password ||
+            (mode === "signup" && (!firstName.trim() || !lastName.trim()))
+          }
+          className="signin-button"
+        >
+          {loading
+            ? "Please wait..."
+            : mode === "signin"
+            ? "Sign In"
+            : "Sign Up"}
+        </button>
+      )}
 
       <div className="signin-switch-mode">
         {mode === "signin" ? (
@@ -182,6 +261,7 @@ const SignIn: React.FC<SignInProps> = ({ onSignInSuccess }) => {
               onClick={() => {
                 setMode("signup");
                 setErrorMsg(null);
+                setSignedUp(false);
               }}
             >
               Sign Up
@@ -194,6 +274,7 @@ const SignIn: React.FC<SignInProps> = ({ onSignInSuccess }) => {
               onClick={() => {
                 setMode("signin");
                 setErrorMsg(null);
+                setSignedUp(false);
               }}
             >
               Sign In

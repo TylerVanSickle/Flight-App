@@ -35,7 +35,9 @@ import Flights from "./pages/Flights";
 import WeightBalance from "./pages/WeightBalance";
 import Crosswind from "./pages/Crosswind";
 import SignIn from "./pages/SignIn";
+import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
+import Profile from "./pages/Profile";
 
 import { supabase } from "./supabaseClient";
 import type { Session } from "@supabase/supabase-js";
@@ -102,11 +104,20 @@ const AppContent: React.FC = () => {
     await supabase.auth.signOut();
     // onAuthStateChange will redirect to "/"
   };
+  const unauthenticatedAllowedPaths = ["/", "/reset-password"];
+
+  if (!session && !unauthenticatedAllowedPaths.includes(location.pathname)) {
+    return <Redirect to="/" />;
+  }
+
+  // Always allow access to reset-password page
+  if (location.pathname === "/reset-password") {
+    return <ResetPassword />;
+  }
 
   if (!session) {
     return <SignIn onSignInSuccess={() => history.push("/home")} />;
   }
-
   // Get current page title or fallback
   const currentPath = location.pathname.toLowerCase();
   const pageTitle = routeTitles[currentPath] || "Pilot Toolbox";
@@ -137,7 +148,7 @@ const AppContent: React.FC = () => {
             size="small"
             fill="clear"
             aria-label="Profile"
-            onClick={() => history.push("/profile")} // you can add a profile page later
+            onClick={() => history.push("/profile")}
             style={{ fontSize: "1.5rem", padding: 0 }}
           >
             <IonIcon icon={personCircleOutline} />
@@ -188,6 +199,8 @@ const AppContent: React.FC = () => {
               <Route exact path="/flights" component={Flights} />
               <Route exact path="/weightbalance" component={WeightBalance} />
               <Route exact path="/crosswind" component={Crosswind} />
+              <Route exact path="/profile" component={Profile} />{" "}
+              {/* Put this here */}
               <Route exact path="/">
                 <Redirect to="/home" />
               </Route>
