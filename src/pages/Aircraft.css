@@ -8,11 +8,6 @@
   flex-direction: column;
 }
 
-.aircraft-content {
-  padding-top: 112px; /* 56px Ionic toolbar + 56px custom App header */
-  margin: 0 auto;
-}
-
 .aircraft-toolbar {
   display: flex;
   justify-content: space-between;
