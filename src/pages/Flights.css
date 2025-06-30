@@ -1,4 +1,6 @@
 /* Flights.css */
+@import "leaflet/dist/leaflet.css";
+
 .flights-page {
   padding-top: 56px; /* pushes content below the fixed navbar */
   box-sizing: border-box;
@@ -9,7 +11,7 @@
   max-width: 900px;
   font-family: Arial, sans-serif;
   margin: 0 auto;
-  min-height: 100vh; /* ensures page is full height */
+  height: auto;
 }
 
 .flights-page h2,
@@ -117,6 +119,7 @@
 .flight-actions {
   display: flex;
   gap: 10px;
+  margin-top: 10px;
 }
 
 .flight-actions button {
@@ -199,4 +202,29 @@
   cursor: default;
   max-width: 250px;
   text-align: center;
+}
+.autocomplete-container {
+  position: relative;
+}
+
+.suggestions {
+  position: absolute;
+  background: white;
+  border: 1px solid #ccc;
+  max-height: 150px;
+  overflow-y: auto;
+  width: 100%;
+  z-index: 999;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.suggestions li {
+  padding: 8px;
+  cursor: pointer;
+}
+
+.suggestions li:hover {
+  background-color: #f0f0f0;
 }

@@ -1,0 +1,74 @@
+/* AirportAutoComplete.css */
+
+.autocomplete-container {
+  position: relative;
+  margin-bottom: 1rem;
+  font-family: var(
+    --ion-font-family,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    "Open Sans",
+    "Helvetica Neue",
+    sans-serif
+  );
+}
+
+.autocomplete-container label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+  color: var(--ion-text-color, #222);
+}
+
+.autocomplete-container input[type="text"] {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 1px solid var(--ion-color-step-400, #ccc);
+  box-sizing: border-box;
+  transition: border-color 0.3s ease;
+}
+
+.autocomplete-container input[type="text"]:focus {
+  outline: none;
+  border-color: var(--ion-color-primary, #3880ff);
+  box-shadow: 0 0 6px var(--ion-color-primary, #3880ff);
+}
+
+.suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px; /* limit height */
+  overflow: hidden;
+  background-color: var(--ion-background-color, #fff);
+  border: 1px solid var(--ion-color-step-400, #ccc);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+}
+
+.suggestions li {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--ion-text-color, #222);
+  transition: background-color 0.2s ease;
+}
+
+.suggestions li:hover,
+.suggestions li:focus {
+  background-color: var(--ion-color-step-100, #f0f0f0);
+}
+
+.suggestions li:active {
+  background-color: var(--ion-color-step-200, #e0e0e0);
+}

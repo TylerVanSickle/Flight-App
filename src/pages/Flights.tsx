@@ -1,6 +1,22 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import "./Flights.css";
+import AirportAutoComplete from "../components/AirportAutoComplete";
+import rawAirportData from "../data/airports.json";
+import FlightMap from "../components/FlightMap";
+import { IonContent } from "@ionic/react";
+
+interface Airport {
+  name: string;
+  city: string;
+  country: string;
+  iata: string;
+  lat: number;
+  lon: number;
+}
+
+// Cast imported JSON to the correct type:
+const airportData = rawAirportData as Record<string, Airport>;
 
 interface Flight {
   id: number;
@@ -10,6 +26,7 @@ interface Flight {
   duration: string;
   departure: string;
   arrival: string;
+  stops: string[];
   notes: string;
 }
 
@@ -32,9 +49,9 @@ const Flights: React.FC = () => {
   const [arrival, setArrival] = useState("");
   const [notes, setNotes] = useState("");
   const [editingFlightId, setEditingFlightId] = useState<number | null>(null);
-
-  // NEW: Show/hide flight form toggle
   const [showFlightForm, setShowFlightForm] = useState(false);
+  const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
+  const [stops, setStops] = useState<string[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -79,6 +96,7 @@ const Flights: React.FC = () => {
         duration: string;
         departure: string;
         arrival: string;
+        stops: string[];
         notes: string;
         user_id: string;
       }
@@ -96,7 +114,6 @@ const Flights: React.FC = () => {
 
     fetchData();
   }, []);
-
   const saveFlight = async () => {
     if (
       !pilotName.trim() ||
@@ -110,93 +127,80 @@ const Flights: React.FC = () => {
       return;
     }
 
+    let aircraftId = null;
+
+    if (addingNewAircraft) {
+      // You should add the new aircraft first, get its id, then continue
+      alert(
+        "Please add the new aircraft first using 'Add new aircraft' button"
+      );
+      return;
+    } else {
+      aircraftId = selectedAircraft || null;
+    }
+
+    // Get current user for user_id
     const {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      alert("You must be logged in to add or edit flights.");
+      alert("User not authenticated");
       return;
     }
 
-    if (editingFlightId) {
-      const { error } = await supabase
-        .from("flights")
-        .update({
-          pilotName: pilotName.trim(),
-          date,
-          aircraft_id: selectedAircraft,
-          duration: duration.trim(),
-          departure: departure.trim(),
-          arrival: arrival.trim(),
-          notes: notes.trim(),
-        })
-        .eq("id", editingFlightId);
+    const flightData = {
+      pilotName: pilotName.trim(),
+      date,
+      aircraft_id: aircraftId,
+      duration: duration.trim(),
+      departure: departure.trim(),
+      arrival: arrival.trim(),
+      stops: stops.filter((s) => s.trim() !== ""), // array of strings
+      notes: notes.trim(),
+      user_id: user.id,
+    };
 
-      if (error) {
-        alert("Failed to update flight");
-        console.error(error);
-      } else {
+    try {
+      if (editingFlightId) {
+        // Update existing flight
+        const { error } = await supabase
+          .from("flights")
+          .update(flightData)
+          .eq("id", editingFlightId);
+
+        if (error) throw error;
+
         setFlights((prev) =>
           prev.map((f) =>
-            f.id === editingFlightId
-              ? {
-                  ...f,
-                  pilotName: pilotName.trim(),
-                  date,
-                  aircraft: aircraftList.find((a) => a.id === selectedAircraft)
-                    ? `${
-                        aircraftList.find((a) => a.id === selectedAircraft)
-                          ?.name
-                      } (${
-                        aircraftList.find((a) => a.id === selectedAircraft)
-                          ?.tail_num
-                      })`
-                    : f.aircraft,
-                  duration: duration.trim(),
-                  departure: departure.trim(),
-                  arrival: arrival.trim(),
-                  notes: notes.trim(),
-                }
-              : f
+            f.id === editingFlightId ? { ...f, ...flightData } : f
           )
         );
-        resetForm();
-        setShowFlightForm(false); // hide form after update
-      }
-    } else {
-      const { data, error } = await supabase
-        .from("flights")
-        .insert([
-          {
-            user_id: user.id,
-            pilotName: pilotName.trim(),
-            date,
-            aircraft_id: selectedAircraft,
-            duration: duration.trim(),
-            departure: departure.trim(),
-            arrival: arrival.trim(),
-            notes: notes.trim(),
-          },
-        ])
-        .select();
+      } else {
+        // Insert new flight
+        const { data, error } = await supabase
+          .from("flights")
+          .insert([flightData])
+          .select();
 
-      if (error) {
-        alert("Failed to add flight");
-        console.error(error);
-      } else if (data && data.length > 0) {
-        const newFlight = data[0];
-        const ac = aircraftList.find((a) => a.id === newFlight.aircraft_id);
-        setFlights((prev) => [
-          {
-            ...newFlight,
-            aircraft: ac ? `${ac.name} (${ac.tail_num})` : "Unknown",
-          },
-          ...prev,
-        ]);
-        resetForm();
-        setShowFlightForm(false); // hide form after add
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setFlights((prev) => [...prev, data[0]]);
+        }
+      }
+
+      resetForm();
+      setShowFlightForm(false);
+      setEditingFlightId(null);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        alert("Failed to save flight: " + err.message);
+        console.error("Supabase error:", err);
+      } else {
+        alert("Failed to save flight: " + String(err));
+        console.error("Supabase error:", err);
       }
     }
   };
@@ -208,6 +212,7 @@ const Flights: React.FC = () => {
     setDuration("");
     setDeparture("");
     setArrival("");
+    setStops([]);
     setNotes("");
     setEditingFlightId(null);
     setAddingNewAircraft(false);
@@ -218,18 +223,28 @@ const Flights: React.FC = () => {
     setEditingFlightId(flight.id);
     setPilotName(flight.pilotName);
     setDate(flight.date);
-    const ac = aircraftList.find(
-      (a) =>
-        flight.aircraft.startsWith(a.name) &&
-        flight.aircraft.includes(a.tail_num)
-    );
-    setSelectedAircraft(ac ? ac.id : "");
     setDuration(flight.duration);
     setDeparture(flight.departure);
     setArrival(flight.arrival);
     setNotes(flight.notes);
-    setAddingNewAircraft(false);
-    setShowFlightForm(true); // show form when editing
+    setStops(flight.stops || []);
+
+    // Try to match the aircraft string back to the id
+    const ac = aircraftList.find(
+      (a) => `${a.name} (${a.tail_num})` === flight.aircraft
+    );
+
+    if (ac) {
+      setSelectedAircraft(ac.id);
+      setAddingNewAircraft(false);
+      setNewAircraftInput("");
+    } else {
+      // Aircraft not found (was likely deleted), allow re-select or new entry
+      setSelectedAircraft("");
+      setAddingNewAircraft(false);
+    }
+
+    setShowFlightForm(true);
   };
 
   const handleDelete = async (flightId: number) => {
@@ -307,192 +322,251 @@ const Flights: React.FC = () => {
       setNewAircraftInput("");
     }
   };
-  // Helper function to convert "HH:MM" string to total minutes
+
   const durationToMinutes = (duration: string): number => {
     const [hours, minutes] = duration.split(":").map(Number);
     return (hours || 0) * 60 + (minutes || 0);
   };
 
-  // Helper function to convert total minutes back to "HH:MM" format
   const minutesToDuration = (totalMinutes: number): string => {
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
     return `${hours}:${minutes.toString().padStart(2, "0")}`;
   };
 
-  // Calculate total duration in minutes
   const totalMinutes = flights.reduce(
     (sum, flight) => sum + durationToMinutes(flight.duration),
     0
   );
 
-  // Format total duration for display
   const totalDuration = minutesToDuration(totalMinutes);
-
   return (
-    <div className="flights-page">
-      <h2>Flight Log</h2>
+    <IonContent scrollY={true}>
+      <div className="flights-page">
+        <h2>Flight Log</h2>
 
-      {/* NEW: Toggle button */}
-      {!showFlightForm && (
-        <button
-          className="show-form-btn"
-          onClick={() => {
-            resetForm();
-            setShowFlightForm(true);
-          }}
-        >
-          + Add New Flight
-        </button>
-      )}
-
-      {/* Flight form */}
-      {showFlightForm && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            saveFlight();
-          }}
-        >
-          <label htmlFor="pilotName">Pilot Name*:</label>
-          <input
-            id="pilotName"
-            type="text"
-            value={pilotName}
-            onChange={(e) => setPilotName(e.target.value)}
-            required
-          />
-
-          <label htmlFor="date">Date*:</label>
-          <input
-            id="date"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-          />
-
-          <label htmlFor="aircraft">Aircraft*:</label>
-          <select
-            id="aircraft"
-            value={addingNewAircraft ? "__add_new__" : selectedAircraft}
-            onChange={handleAircraftChange}
-            required
-          >
-            <option value="" disabled>
-              Select aircraft
-            </option>
-            {aircraftList.map((ac) => (
-              <option key={ac.id} value={ac.id}>
-                {ac.name} ({ac.tail_num})
-              </option>
-            ))}
-            <option value="__add_new__">Add new aircraft...</option>
-          </select>
-
-          {addingNewAircraft && (
-            <div className="new-aircraft-input-container">
-              <input
-                type="text"
-                value={newAircraftInput}
-                onChange={(e) => setNewAircraftInput(e.target.value)}
-                placeholder="Enter aircraft name or tail number"
-              />
-              <button
-                type="button"
-                onClick={handleAddNewAircraft}
-                disabled={!newAircraftInput.trim()}
-              >
-                Add Aircraft
-              </button>
-            </div>
-          )}
-
-          <label htmlFor="duration">Flight Duration* (e.g., 1:30):</label>
-          <input
-            id="duration"
-            type="text"
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            placeholder="HH:MM"
-            required
-          />
-
-          <label htmlFor="departure">Departure Airport*:</label>
-          <input
-            id="departure"
-            type="text"
-            value={departure}
-            onChange={(e) => setDeparture(e.target.value)}
-            placeholder="ICAO/IATA code or airport name"
-            required
-          />
-
-          <label htmlFor="arrival">Arrival Airport*:</label>
-          <input
-            id="arrival"
-            type="text"
-            value={arrival}
-            onChange={(e) => setArrival(e.target.value)}
-            placeholder="ICAO/IATA code or airport name"
-            required
-          />
-
-          <label htmlFor="notes">Notes:</label>
-          <textarea
-            id="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Any additional details"
-          />
-
-          <button type="submit">
-            {editingFlightId ? "Update Flight" : "Add Flight"}
-          </button>
+        {!showFlightForm && (
           <button
-            type="button"
+            className="show-form-btn"
             onClick={() => {
               resetForm();
-              setShowFlightForm(false);
+              setShowFlightForm(true);
             }}
-            className="cancel-button"
           >
-            Cancel
+            + Add New Flight
           </button>
-        </form>
-      )}
+        )}
 
-      <hr style={{ margin: "2rem 0" }} />
+        {showFlightForm && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              saveFlight();
+            }}
+          >
+            <label htmlFor="pilotName">Pilot Name*:</label>
+            <input
+              id="pilotName"
+              type="text"
+              value={pilotName}
+              onChange={(e) => setPilotName(e.target.value)}
+              required
+            />
 
-      <h3>Logged Flights</h3>
-      {flights.length === 0 && <p>No flights logged yet.</p>}
-      <ul className="flights-list">
-        {flights.map((f) => (
-          <li key={f.id}>
-            <strong>{f.pilotName}</strong>
+            <label htmlFor="date">Date*:</label>
+            <input
+              id="date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              required
+            />
 
-            <div className="flight-details">
-              <span>{f.date}</span>
-              <span>{f.aircraft}</span>
-              <span>{f.duration}</span>
-              <span>
-                {f.departure} → {f.arrival}
-              </span>
-            </div>
+            <label htmlFor="aircraft">Aircraft*:</label>
+            <select
+              id="aircraft"
+              value={addingNewAircraft ? "__add_new__" : selectedAircraft}
+              onChange={handleAircraftChange}
+              required
+            >
+              <option value="" disabled>
+                Select aircraft
+              </option>
+              {aircraftList.map((ac) => (
+                <option key={ac.id} value={ac.id}>
+                  {ac.name} ({ac.tail_num})
+                </option>
+              ))}
+              <option value="__add_new__">Add new aircraft...</option>
+            </select>
 
-            {f.notes && <p>{f.notes}</p>}
+            {addingNewAircraft && (
+              <div className="new-aircraft-input-container">
+                <input
+                  type="text"
+                  value={newAircraftInput}
+                  onChange={(e) => setNewAircraftInput(e.target.value)}
+                  placeholder="Enter aircraft name or tail number"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddNewAircraft}
+                  disabled={!newAircraftInput.trim()}
+                >
+                  Add Aircraft
+                </button>
+              </div>
+            )}
 
-            <div className="flight-actions">
-              <button onClick={() => handleEdit(f)}>Edit</button>
-              <button onClick={() => handleDelete(f.id)}>Delete</button>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <div className="total-flight-time">
-        Total Flight Time: {totalDuration} hour(s)
+            <label htmlFor="duration">Flight Duration* (e.g., 1:30):</label>
+            <input
+              id="duration"
+              type="text"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              placeholder="HH:MM"
+              required
+            />
+
+            <AirportAutoComplete
+              airports={airportData}
+              label="Departure Airport*:"
+              value={departure}
+              onChange={setDeparture}
+            />
+
+            {/* Stops input fields */}
+            {stops.map((stop, index) => (
+              <div
+                key={index}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                <AirportAutoComplete
+                  airports={airportData}
+                  label={`Stop ${index + 1}:`}
+                  value={stop}
+                  onChange={(newValue) => {
+                    const updatedStops = [...stops];
+                    updatedStops[index] = newValue;
+                    setStops(updatedStops);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updatedStops = stops.filter((_, i) => i !== index);
+                    setStops(updatedStops);
+                  }}
+                  style={{
+                    padding: "0.4rem 0.6rem",
+                    backgroundColor: "#e74c3c",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    height: "fit-content",
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setStops([...stops, ""])}
+              className="add-stop-button"
+              style={{ marginBottom: "1rem" }}
+            >
+              + Add Stop
+            </button>
+
+            <AirportAutoComplete
+              airports={airportData}
+              label="Arrival Airport*:"
+              value={arrival}
+              onChange={setArrival}
+            />
+
+            <label htmlFor="notes">Notes:</label>
+            <textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any additional details"
+            />
+
+            <button type="submit">
+              {editingFlightId ? "Update Flight" : "Add Flight"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                resetForm();
+                setShowFlightForm(false);
+              }}
+              className="cancel-button"
+            >
+              Cancel
+            </button>
+          </form>
+        )}
+
+        <hr style={{ margin: "2rem 0" }} />
+
+        <h3>Logged Flights</h3>
+        {flights.length === 0 && <p>No flights logged yet.</p>}
+        <ul className="flights-list">
+          {flights.map((f) => (
+            <li key={f.id}>
+              <strong>{f.pilotName}</strong>
+
+              <div className="flight-details">
+                <span>{f.date}</span>
+                <span>{f.aircraft}</span>
+                <span>{f.duration}</span>
+                <span>
+                  {[f.departure, ...(f.stops || []), f.arrival].join(" → ")}
+                </span>
+              </div>
+
+              {/* Show map/details only for the selected flight */}
+              {selectedFlight?.id === f.id && (
+                <div style={{ marginTop: "2rem" }}>
+                  <h3>Flight Details for {selectedFlight.pilotName}</h3>
+                  <FlightMap flight={selectedFlight} airports={airportData} />
+                </div>
+              )}
+
+              {f.notes && <p>{f.notes}</p>}
+
+              <div className="flight-actions">
+                <button onClick={() => handleEdit(f)}>Edit</button>
+                <button onClick={() => handleDelete(f.id)}>Delete</button>
+                <button
+                  onClick={() =>
+                    setSelectedFlight(selectedFlight?.id === f.id ? null : f)
+                  }
+                >
+                  {selectedFlight?.id === f.id
+                    ? "Hide Details"
+                    : "More Details"}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <div className="total-flight-time">
+          Total Flight Time: {totalDuration} hour(s)
+        </div>
       </div>
-    </div>
+    </IonContent>
   );
 };
 
