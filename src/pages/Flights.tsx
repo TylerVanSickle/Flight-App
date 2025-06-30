@@ -35,6 +35,46 @@ interface Aircraft {
   name: string;
   tail_num: string;
 }
+// Helper to convert degrees to radians and calculate nautical miles
+function haversineDistanceNM(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const toRad = (x: number) => (x * Math.PI) / 180;
+  const R = 3440.1; // Earth's radius in nautical miles
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Calculate total NM for a flight with possible stops
+function calculateFlightDistanceNM(
+  airportData: Record<string, Airport>,
+  flight: Flight
+): number {
+  const legs = [flight.departure, ...(flight.stops || []), flight.arrival];
+  let total = 0;
+
+  for (let i = 0; i < legs.length - 1; i++) {
+    const a1 = airportData[legs[i]];
+    const a2 = airportData[legs[i + 1]];
+
+    if (a1 && a2) {
+      total += haversineDistanceNM(a1.lat, a1.lon, a2.lat, a2.lon);
+    }
+  }
+
+  return total;
+}
 
 const Flights: React.FC = () => {
   const [pilotName, setPilotName] = useState("");
@@ -340,6 +380,12 @@ const Flights: React.FC = () => {
   );
 
   const totalDuration = minutesToDuration(totalMinutes);
+  const totalNM = flights.reduce((sum, flight) => {
+    return sum + calculateFlightDistanceNM(airportData, flight);
+  }, 0);
+
+  const roundedNM = Math.round(totalNM);
+
   return (
     <IonContent scrollY={true}>
       <div className="flights-page">
@@ -525,13 +571,15 @@ const Flights: React.FC = () => {
           {flights.map((f) => (
             <li key={f.id}>
               <strong>{f.pilotName}</strong>
-
               <div className="flight-details">
                 <span>{f.date}</span>
                 <span>{f.aircraft}</span>
                 <span>{f.duration}</span>
                 <span>
                   {[f.departure, ...(f.stops || []), f.arrival].join(" → ")}
+                </span>
+                <span>
+                  ~{calculateFlightDistanceNM(airportData, f).toFixed(0)} NM
                 </span>
               </div>
 
@@ -564,6 +612,10 @@ const Flights: React.FC = () => {
 
         <div className="total-flight-time">
           Total Flight Time: {totalDuration} hour(s)
+        </div>
+        <div className="total-flight-time">
+          Total Flight Time: ~{totalDuration} hour(s) <br />
+          Total Miles Flown: ~{roundedNM} NM
         </div>
       </div>
     </IonContent>
