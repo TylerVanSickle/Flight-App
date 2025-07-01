@@ -28,6 +28,7 @@ import {
   home,
   logOutOutline,
   personCircleOutline,
+  checkmark,
 } from "ionicons/icons";
 
 import Aircraft from "./pages/Aircraft";
@@ -43,6 +44,7 @@ import { supabase } from "./supabaseClient";
 import type { Session } from "@supabase/supabase-js";
 
 import "./theme/variables.css";
+import PreFlightChecklist from "./pages/Checklist";
 setupIonicReact();
 
 const DARK_MODE_KEY = "dark-mode";
@@ -199,6 +201,7 @@ const AppContent: React.FC = () => {
               <Route exact path="/flights" component={Flights} />
               <Route exact path="/weightbalance" component={WeightBalance} />
               <Route exact path="/crosswind" component={Crosswind} />
+              <Route exact path="/checklist" component={PreFlightChecklist} />
               <Route exact path="/profile" component={Profile} />{" "}
               {/* Put this here */}
               <Route exact path="/">
@@ -230,6 +233,10 @@ const AppContent: React.FC = () => {
             <IonTabButton tab="crosswind" href="/crosswind">
               <IonIcon icon={cloudy} />
               <IonLabel>Crosswind</IonLabel>
+            </IonTabButton>
+            <IonTabButton tab="checklist" href="/checklist">
+              <IonIcon icon={checkmark} />
+              <IonLabel>Checklists</IonLabel>
             </IonTabButton>
           </IonTabBar>
         </IonTabs>

@@ -1,0 +1,74 @@
+.crosswind-page {
+  padding-left: 20px;
+  padding-right: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+  font-family: Arial, sans-serif;
+  color: #f1f1f1;
+  box-sizing: border-box;
+}
+
+.crosswind-page h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1.5rem;
+  color: #ffffff;
+}
+
+.crosswind-page p {
+  max-width: 700px;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+  color: #ccc;
+}
+
+.crosswind-form label {
+  display: block;
+  margin-top: 1.2rem;
+  margin-bottom: 0.6rem;
+  font-weight: bold;
+  color: #ddd;
+}
+
+.crosswind-form input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 1.1rem;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background: #222;
+  color: #eee;
+  box-sizing: border-box;
+}
+
+.crosswind-form ion-button {
+  margin-top: 1.5rem;
+  font-size: 1.1rem;
+  background: #4a90e2;
+  color: #fff;
+  border-radius: 8px;
+}
+
+.crosswind-form ion-button:disabled {
+  background: #555;
+}
+
+.crosswind-result {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #333;
+  border-radius: 8px;
+  text-align: center;
+  color: #fff;
+}
+
+.crosswind-diagram {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.diagram-image {
+  max-width: 100%;
+  height: auto;
+  border: 2px solid #444;
+  border-radius: 8px;
+}

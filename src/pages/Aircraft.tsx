@@ -20,6 +20,7 @@ import {
 } from "ionicons/icons";
 import { supabase } from "../supabaseClient";
 import "./Aircraft.css";
+import EnvelopeEditor from "../components/EnvelopeEditor";
 
 interface Aircraft {
   id: string;
@@ -28,6 +29,10 @@ interface Aircraft {
   bew: number;
   arm: number;
   moment: number;
+  cg_min: number; // ✅ new
+  cg_max: number; // ✅ new
+  weight_min: number; // ✅ new
+  weight_max: number; // ✅ new
 }
 
 const Aircraft: React.FC = () => {
@@ -37,20 +42,29 @@ const Aircraft: React.FC = () => {
   const [searchActive, setSearchActive] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
-  // New state for editing
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editTailNum, setEditTailNum] = useState("");
   const [editBEW, setEditBEW] = useState("");
   const [editArm, setEditArm] = useState("");
   const [editMoment, setEditMoment] = useState("");
+  const [editCgMin, setEditCgMin] = useState("");
+  const [editCgMax, setEditCgMax] = useState("");
+  const [editWeightMin, setEditWeightMin] = useState("");
+  const [editWeightMax, setEditWeightMax] = useState("");
 
-  // Add form state (for adding new aircraft)
   const [name, setName] = useState("");
   const [tailNum, setTailNum] = useState("");
   const [bew, setBEW] = useState("");
   const [arm, setArm] = useState("");
   const [moment, setMoment] = useState("");
+  const [cgMin, setCgMin] = useState("");
+  const [cgMax, setCgMax] = useState("");
+  const [weightMin, setWeightMin] = useState("");
+  const [weightMax, setWeightMax] = useState("");
+
+  const [selectedAircraftForEnvelope, setSelectedAircraftForEnvelope] =
+    useState<Aircraft | null>(null);
 
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -80,17 +94,14 @@ const Aircraft: React.FC = () => {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser();
-
     if (userError || !user) {
       console.error("User not authenticated", userError);
       return;
     }
-
     const { data, error } = await supabase
       .from("aircraft")
-      .select("*")
+      .select("*") // ✅ all fields pulled
       .eq("user_id", user.id);
-
     if (error) {
       console.error("Error fetching aircraft:", error);
     } else {
@@ -101,29 +112,28 @@ const Aircraft: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     const {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser();
-
     if (userError || !user) {
-      console.error("User not authenticated", userError);
       alert("You must be logged in to add an aircraft.");
       return;
     }
-
     const { error } = await supabase.from("aircraft").insert([
       {
         name,
         tail_num: tailNum,
-        bew: bew ? parseFloat(bew) : null,
-        arm: arm ? parseFloat(arm) : null,
-        moment: moment ? parseFloat(moment) : null,
+        bew: parseFloat(bew),
+        arm: parseFloat(arm),
+        moment: parseFloat(moment),
+        cg_min: parseFloat(cgMin),
+        cg_max: parseFloat(cgMax),
+        weight_min: parseFloat(weightMin),
+        weight_max: parseFloat(weightMax),
         user_id: user.id,
       },
     ]);
-
     if (error) {
       console.error("Error adding aircraft:", error);
     } else {
@@ -132,12 +142,15 @@ const Aircraft: React.FC = () => {
       setBEW("");
       setArm("");
       setMoment("");
+      setCgMin("");
+      setCgMax("");
+      setWeightMin("");
+      setWeightMax("");
       setShowForm(false);
       fetchAircraft();
     }
   };
 
-  // Start editing a particular aircraft
   const startEdit = (ac: Aircraft) => {
     setEditingId(ac.id);
     setEditName(ac.name);
@@ -145,9 +158,12 @@ const Aircraft: React.FC = () => {
     setEditBEW(ac.bew.toString());
     setEditArm(ac.arm.toString());
     setEditMoment(ac.moment.toString());
+    setEditCgMin(ac.cg_min.toString());
+    setEditCgMax(ac.cg_max.toString());
+    setEditWeightMin(ac.weight_min.toString());
+    setEditWeightMax(ac.weight_max.toString());
   };
 
-  // Cancel editing
   const cancelEdit = () => {
     setEditingId(null);
     setEditName("");
@@ -155,37 +171,39 @@ const Aircraft: React.FC = () => {
     setEditBEW("");
     setEditArm("");
     setEditMoment("");
+    setEditCgMin("");
+    setEditCgMax("");
+    setEditWeightMin("");
+    setEditWeightMax("");
   };
 
-  // Save edited aircraft to Supabase and refresh
   const saveEdit = async () => {
     if (!editingId) return;
-
     const {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser();
-
     if (userError || !user) {
-      alert("You must be logged in to edit an aircraft.");
+      alert("You must be logged in.");
       return;
     }
-
     const { error } = await supabase
       .from("aircraft")
       .update({
         name: editName,
         tail_num: editTailNum,
-        bew: editBEW ? parseFloat(editBEW) : null,
-        arm: editArm ? parseFloat(editArm) : null,
-        moment: editMoment ? parseFloat(editMoment) : null,
+        bew: parseFloat(editBEW),
+        arm: parseFloat(editArm),
+        moment: parseFloat(editMoment),
+        cg_min: parseFloat(editCgMin),
+        cg_max: parseFloat(editCgMax),
+        weight_min: parseFloat(editWeightMin),
+        weight_max: parseFloat(editWeightMax),
       })
       .eq("id", editingId)
       .eq("user_id", user.id);
-
     if (error) {
       console.error("Error updating aircraft:", error);
-      alert("Failed to update aircraft.");
     } else {
       cancelEdit();
       fetchAircraft();
@@ -195,11 +213,9 @@ const Aircraft: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this aircraft?"))
       return;
-
     const { error } = await supabase.from("aircraft").delete().eq("id", id);
     if (error) {
       console.error("Delete failed:", error);
-      alert("Failed to delete aircraft.");
     } else {
       if (editingId === id) cancelEdit();
       fetchAircraft();
@@ -211,11 +227,9 @@ const Aircraft: React.FC = () => {
       <IonHeader>
         <IonToolbar></IonToolbar>
       </IonHeader>
-
       <IonContent fullscreen>
         <div className="aircraft-toolbar">
           <div className="aircraft-title">Your Aircraft</div>
-
           <div className="aircraft-actions">
             {searchActive && (
               <IonInput
@@ -299,6 +313,42 @@ const Aircraft: React.FC = () => {
                   onIonChange={(e) => setMoment(e.detail.value!)}
                 />
               </IonItem>
+              <IonItem className="aircraft-input">
+                <IonInput
+                  placeholder="CG Min"
+                  type="number"
+                  value={cgMin}
+                  required
+                  onIonChange={(e) => setCgMin(e.detail.value!)}
+                />
+              </IonItem>
+              <IonItem className="aircraft-input">
+                <IonInput
+                  placeholder="CG Max"
+                  type="number"
+                  value={cgMax}
+                  required
+                  onIonChange={(e) => setCgMax(e.detail.value!)}
+                />
+              </IonItem>
+              <IonItem className="aircraft-input">
+                <IonInput
+                  placeholder="Weight Min"
+                  type="number"
+                  value={weightMin}
+                  required
+                  onIonChange={(e) => setWeightMin(e.detail.value!)}
+                />
+              </IonItem>
+              <IonItem className="aircraft-input">
+                <IonInput
+                  placeholder="Weight Max"
+                  type="number"
+                  value={weightMax}
+                  required
+                  onIonChange={(e) => setWeightMax(e.detail.value!)}
+                />
+              </IonItem>
               <IonItem lines="none" className="aircraft-submit">
                 <IonButton expand="block" type="submit">
                   Add Aircraft
@@ -346,6 +396,34 @@ const Aircraft: React.FC = () => {
                     onIonChange={(e) => setEditMoment(e.detail.value!)}
                     className="edit-input"
                   />
+                  <IonInput
+                    value={editCgMin}
+                    placeholder="CG Min"
+                    type="number"
+                    onIonChange={(e) => setEditCgMin(e.detail.value!)}
+                    className="edit-input"
+                  />
+                  <IonInput
+                    value={editCgMax}
+                    placeholder="CG Max"
+                    type="number"
+                    onIonChange={(e) => setEditCgMax(e.detail.value!)}
+                    className="edit-input"
+                  />
+                  <IonInput
+                    value={editWeightMin}
+                    placeholder="Weight Min"
+                    type="number"
+                    onIonChange={(e) => setEditWeightMin(e.detail.value!)}
+                    className="edit-input"
+                  />
+                  <IonInput
+                    value={editWeightMax}
+                    placeholder="Weight Max"
+                    type="number"
+                    onIonChange={(e) => setEditWeightMax(e.detail.value!)}
+                    className="edit-input"
+                  />
                   <div className="edit-buttons">
                     <IonButton size="small" onClick={saveEdit} color="success">
                       <IonIcon icon={checkmarkOutline} />
@@ -360,7 +438,9 @@ const Aircraft: React.FC = () => {
                   <div className="aircraft-list-info">
                     <strong>{ac.name}</strong> – {ac.tail_num}
                     <div className="aircraft-list-details">
-                      BEW: {ac.bew} | Arm: {ac.arm} | Moment: {ac.moment}
+                      BEW: {ac.bew} | Arm: {ac.arm} | Moment: {ac.moment} | CG:{" "}
+                      {ac.cg_min}–{ac.cg_max} | W: {ac.weight_min}–
+                      {ac.weight_max}
                     </div>
                   </div>
                   <div className="aircraft-list-actions">
@@ -378,12 +458,30 @@ const Aircraft: React.FC = () => {
                     >
                       <IonIcon icon={trashOutline} />
                     </IonButton>
+                    <IonButton
+                      fill="clear"
+                      onClick={() => setSelectedAircraftForEnvelope(ac)}
+                    >
+                      ✏️ Envelope
+                    </IonButton>
                   </div>
                 </>
               )}
             </IonItem>
           ))}
         </IonList>
+
+        {selectedAircraftForEnvelope && (
+          <div style={{ padding: "20px" }}>
+            <EnvelopeEditor aircraft={selectedAircraftForEnvelope} />
+            <IonButton
+              color="medium"
+              onClick={() => setSelectedAircraftForEnvelope(null)}
+            >
+              Close Envelope Editor
+            </IonButton>
+          </div>
+        )}
       </IonContent>
     </IonPage>
   );

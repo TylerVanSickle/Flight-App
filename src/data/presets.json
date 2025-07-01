@@ -1,0 +1,34 @@
+const aircraftPresets = [
+  {
+    name: "Cessna 172S",
+    bew: 1663,
+    arm: 39.5,
+    moment: 65711,
+    cg_min: 35.0,
+    cg_max: 47.3,
+    weight_min: 1600,
+    weight_max: 2450,
+    envelope: [
+      { x: 35.0, y: 1950 },
+      { x: 35.0, y: 2450 },
+      { x: 47.3, y: 2450 },
+      { x: 47.3, y: 1950 },
+    ],
+  },
+  {
+    name: "Piper Archer II",
+    bew: 1450,
+    arm: 37.5,
+    moment: 54375,
+    cg_min: 35.0,
+    cg_max: 47.3,
+    weight_min: 1600,
+    weight_max: 2550,
+    envelope: [
+      { x: 35.0, y: 1850 },
+      { x: 35.0, y: 2550 },
+      { x: 47.3, y: 2550 },
+      { x: 47.3, y: 1850 },
+    ],
+  },
+];

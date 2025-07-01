@@ -1,0 +1,57 @@
+.checklist-page {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  color: #fff;
+  background-color: #222;
+}
+
+.checklist-page h1 {
+  font-size: 2rem;
+  color: #fff;
+  margin-bottom: 1rem;
+}
+
+.checklist-page ion-item {
+  background-color: #333;
+  margin-bottom: 10px;
+  padding: 15px;
+}
+
+.checklist-page ion-checkbox {
+  margin-right: 10px;
+}
+
+.checklist-page ion-label {
+  color: #ddd;
+  font-size: 1.1rem;
+}
+
+.checklist-page input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  background-color: #333;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 5px;
+}
+
+.checklist-page .add-task {
+  margin-top: 20px;
+}
+
+.checklist-page ion-button {
+  margin-top: 20px;
+  font-size: 1.1rem;
+}
+
+.checklist-page .phase-navigation {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 20px;
+}
+
+.checklist-page ion-button:disabled {
+  background-color: #555;
+}
