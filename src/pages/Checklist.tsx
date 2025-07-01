@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   IonPage,
   IonHeader,
@@ -12,123 +12,208 @@ import {
   IonItem,
   IonSelect,
   IonSelectOption,
+  IonInput,
 } from "@ionic/react";
+import { supabase } from "../supabaseClient"; // Assuming you have your Supabase client setup
+import { v4 as uuidv4 } from "uuid"; // Importing UUID to generate unique ids
 import "./Checklist.css";
 
-// Define types
+// Define types for checklist items and aircraft data
 type ChecklistItem = {
+  id: string;
   task: string;
   completed: boolean;
 };
 
-type AircraftChecklists = {
-  [key: string]: {
-    [phase: string]: ChecklistItem[];
-  };
+type Aircraft = {
+  id: string;
+  name: string;
+  tail_num: string;
 };
 
-// Aircraft-specific checklists
-const aircraftChecklists: AircraftChecklists = {
-  "Cessna 172": {
-    "Outside Preflight": [
-      { task: "Check fuel quantity", completed: false },
-      { task: "Check tire pressure", completed: false },
-      { task: "Check pitot tube", completed: false },
-      { task: "Inspect control surfaces", completed: false },
-      { task: "Check for visible damage", completed: false },
-    ],
-    "Inside Preflight": [
-      { task: "Verify instruments", completed: false },
-      { task: "Check avionics", completed: false },
-      { task: "Set flight plan in GPS", completed: false },
-      { task: "Set transponder code", completed: false },
-      { task: "Check communication radios", completed: false },
-      { task: "Check altimeter setting", completed: false },
-    ],
-    "Run Up": [
-      { task: "Test throttle", completed: false },
-      { task: "Check magnetos", completed: false },
-      { task: "Verify RPM drop on both magnetos", completed: false },
-      {
-        task: "Check engine parameters (oil temp, fuel pressure)",
-        completed: false,
-      },
-    ],
-    "Take Off": [
-      { task: "Set flaps to take-off position", completed: false },
-      { task: "Check trim settings", completed: false },
-      { task: "Verify seatbelts and harnesses", completed: false },
-      { task: "Verify flight controls free and correct", completed: false },
-      { task: "Set takeoff power settings", completed: false },
-      { task: "Verify departure route", completed: false },
-    ],
-    "Mid Flight": [
-      { task: "Monitor fuel consumption", completed: false },
-      { task: "Check engine parameters", completed: false },
-      { task: "Monitor cabin pressure", completed: false },
-      { task: "Verify fuel tank levels", completed: false },
-    ],
-    Landing: [
-      { task: "Check landing gear position", completed: false },
-      { task: "Verify approach speeds", completed: false },
-      { task: "Perform landing briefing", completed: false },
-      { task: "Check for wind conditions", completed: false },
-      { task: "Ensure landing lights are on", completed: false },
-      { task: "Confirm altitude and approach path", completed: false },
-    ],
-  },
-  // Add more aircraft models as needed...
+// Define the structure of Preset 1
+type Preset1 = {
+  [phase: string]: { task: string; completed: boolean; id: string }[];
+};
+
+// Hardcoded checklist data for preset
+const preset1: Preset1 = {
+  "Outside Preflight": [
+    { id: uuidv4(), task: "Check fuel quantity", completed: false },
+    { id: uuidv4(), task: "Check tire pressure", completed: false },
+    { id: uuidv4(), task: "Check pitot tube", completed: false },
+    { id: uuidv4(), task: "Inspect control surfaces", completed: false },
+    { id: uuidv4(), task: "Check for visible damage", completed: false },
+  ],
+  "Inside Preflight": [
+    { id: uuidv4(), task: "Verify instruments", completed: false },
+    { id: uuidv4(), task: "Check avionics", completed: false },
+    { id: uuidv4(), task: "Set flight plan in GPS", completed: false },
+    { id: uuidv4(), task: "Set transponder code", completed: false },
+    { id: uuidv4(), task: "Check communication radios", completed: false },
+    { id: uuidv4(), task: "Check altimeter setting", completed: false },
+  ],
+  "Run Up": [
+    { id: uuidv4(), task: "Test throttle", completed: false },
+    { id: uuidv4(), task: "Check magnetos", completed: false },
+    {
+      id: uuidv4(),
+      task: "Verify RPM drop on both magnetos",
+      completed: false,
+    },
+    {
+      id: uuidv4(),
+      task: "Check engine parameters (oil temp, fuel pressure)",
+      completed: false,
+    },
+  ],
+  "Take Off": [
+    { id: uuidv4(), task: "Set flaps to take-off position", completed: false },
+    { id: uuidv4(), task: "Check trim settings", completed: false },
+    { id: uuidv4(), task: "Verify seatbelts and harnesses", completed: false },
+    {
+      id: uuidv4(),
+      task: "Verify flight controls free and correct",
+      completed: false,
+    },
+    { id: uuidv4(), task: "Set takeoff power settings", completed: false },
+    { id: uuidv4(), task: "Verify departure route", completed: false },
+  ],
+  "Mid Flight": [
+    { id: uuidv4(), task: "Monitor fuel consumption", completed: false },
+    { id: uuidv4(), task: "Check engine parameters", completed: false },
+    { id: uuidv4(), task: "Monitor cabin pressure", completed: false },
+    { id: uuidv4(), task: "Verify fuel tank levels", completed: false },
+  ],
+  Landing: [
+    { id: uuidv4(), task: "Check landing gear position", completed: false },
+    { id: uuidv4(), task: "Verify approach speeds", completed: false },
+    { id: uuidv4(), task: "Perform landing briefing", completed: false },
+    { id: uuidv4(), task: "Check for wind conditions", completed: false },
+    { id: uuidv4(), task: "Ensure landing lights are on", completed: false },
+    {
+      id: uuidv4(),
+      task: "Confirm altitude and approach path",
+      completed: false,
+    },
+  ],
 };
 
 const PreFlightChecklist: React.FC = () => {
-  const [selectedAircraft, setSelectedAircraft] =
-    useState<string>("Cessna 172");
+  const [selectedAircraft, setSelectedAircraft] = useState<string>("");
   const [selectedPhase, setSelectedPhase] =
     useState<string>("Outside Preflight");
-  const [checklist, setChecklist] = useState(
-    aircraftChecklists[selectedAircraft][selectedPhase]
-  );
-  const [newTask, setNewTask] = useState("");
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [newTask, setNewTask] = useState<string>("");
+  const [aircraftList, setAircraftList] = useState<Aircraft[]>([]);
 
-  const handleAircraftChange = (e: CustomEvent) => {
-    const selectedAircraft = e.detail.value;
-    setSelectedAircraft(selectedAircraft);
-
-    // Check if the selected phase exists for the new aircraft
-    const validPhase = aircraftChecklists[selectedAircraft][selectedPhase]
-      ? selectedPhase
-      : "Outside Preflight"; // Fallback to a default phase
-
-    setSelectedPhase(validPhase); // Set phase to valid one
-    setChecklist(aircraftChecklists[selectedAircraft][validPhase]); // Load the checklist for the valid phase
-  };
-
-  const handlePhaseChange = (phase: string) => {
-    setSelectedPhase(phase);
-    setChecklist(aircraftChecklists[selectedAircraft][phase]); // Load the selected phase for the current aircraft
-  };
-
-  const toggleTask = (index: number) => {
-    const newChecklist = [...checklist];
-    newChecklist[index].completed = !newChecklist[index].completed;
-    setChecklist(newChecklist);
-  };
-
-  const addTask = () => {
-    if (newTask.trim() !== "") {
-      const newChecklist = [...checklist, { task: newTask, completed: false }];
-      setChecklist(newChecklist);
-      setNewTask(""); // Clear input
+  // Fetch aircraft data from Supabase
+  const fetchAircraft = async () => {
+    const { data, error } = await supabase.from("aircraft").select("*");
+    if (error) {
+      console.error("Error fetching aircraft:", error);
+    } else {
+      setAircraftList(data || []);
     }
   };
 
-  const removeTask = (index: number) => {
-    const newChecklist = checklist.filter((_, i) => i !== index); // Remove the task at the specified index
-    setChecklist(newChecklist);
+  // Fetch checklist data from Supabase or use preset if not found
+  const fetchChecklist = useCallback(async () => {
+    if (selectedAircraft) {
+      const { data, error } = await supabase
+        .from("aircraft_checklists")
+        .select("*")
+        .eq("aircraft_id", selectedAircraft)
+        .eq("phase", selectedPhase);
+
+      if (error) {
+        console.error("Error fetching checklist:", error);
+      } else {
+        // If no checklist exists in Supabase, use preset
+        if (data && data.length === 0) {
+          const presetChecklist = preset1[selectedPhase];
+          setChecklist(presetChecklist || []); // Use preset if no data
+        } else {
+          // Combine preset and Supabase data
+          const presetChecklist = preset1[selectedPhase];
+          const combinedChecklist = [
+            ...(presetChecklist || []), // Preload the preset
+            ...data, // Append custom user tasks from Supabase
+          ];
+          setChecklist(combinedChecklist); // Use combined data
+        }
+      }
+    }
+  }, [selectedAircraft, selectedPhase]);
+
+  useEffect(() => {
+    fetchAircraft(); // Fetch aircraft data on component mount
+  }, []);
+
+  useEffect(() => {
+    if (selectedAircraft) {
+      fetchChecklist(); // Fetch checklist for the selected aircraft and phase
+    }
+  }, [selectedAircraft, selectedPhase, fetchChecklist]);
+
+  // Handle aircraft change
+  const handleAircraftChange = (e: CustomEvent) => {
+    setSelectedAircraft(e.detail.value);
   };
 
-  const saveChecklist = () => {
-    console.log("Checklist saved:", checklist);
+  // Handle phase change
+  const handlePhaseChange = (phase: string) => {
+    setSelectedPhase(phase);
+    fetchChecklist(); // Fetch checklist for the new phase
+  };
+
+  // Add a new task
+  const addTask = async () => {
+    if (newTask.trim() !== "") {
+      // Add to Supabase
+      const { error } = await supabase.from("aircraft_checklists").insert([
+        {
+          aircraft_id: selectedAircraft,
+          phase: selectedPhase,
+          task: newTask,
+          completed: false,
+        },
+      ]);
+      if (error) {
+        console.error("Error adding task:", error);
+      } else {
+        setNewTask(""); // Clear input field
+        fetchChecklist(); // Refresh checklist
+      }
+    }
+  };
+
+  // Toggle task completion
+  const toggleTask = async (taskId: string, completed: boolean) => {
+    const { error } = await supabase
+      .from("aircraft_checklists")
+      .update({ completed: !completed })
+      .eq("id", taskId);
+
+    if (error) {
+      console.error("Error updating task:", error);
+    } else {
+      fetchChecklist(); // Refresh checklist
+    }
+  };
+
+  // Remove a task
+  const removeTask = async (taskId: string) => {
+    const { error } = await supabase
+      .from("aircraft_checklists")
+      .delete()
+      .eq("id", taskId);
+
+    if (error) {
+      console.error("Error removing task:", error);
+    } else {
+      fetchChecklist(); // Refresh checklist
+    }
   };
 
   return (
@@ -148,9 +233,11 @@ const PreFlightChecklist: React.FC = () => {
             onIonChange={handleAircraftChange}
             placeholder="Select Aircraft"
           >
-            <IonSelectOption value="Cessna 172">Cessna 172</IonSelectOption>
-            <IonSelectOption value="Piper PA-28">Piper PA-28</IonSelectOption>
-            <IonSelectOption value="Cirrus SR22">Cirrus SR22</IonSelectOption>
+            {aircraftList.map((ac) => (
+              <IonSelectOption key={ac.id} value={ac.id}>
+                {ac.name}
+              </IonSelectOption>
+            ))}
           </IonSelect>
 
           {/* Phase Navigation */}
@@ -176,16 +263,16 @@ const PreFlightChecklist: React.FC = () => {
           </div>
 
           <IonList>
-            {checklist.map((item: ChecklistItem, index: number) => (
-              <IonItem key={index}>
+            {checklist.map((task) => (
+              <IonItem key={task.id}>
                 <IonCheckbox
-                  checked={item.completed}
-                  onIonChange={() => toggleTask(index)}
+                  checked={task.completed}
+                  onIonChange={() => toggleTask(task.id, task.completed)}
                 />
-                <IonLabel>{item.task}</IonLabel>
+                <IonLabel>{task.task}</IonLabel>
                 <IonButton
                   color="danger"
-                  onClick={() => removeTask(index)}
+                  onClick={() => removeTask(task.id)}
                   slot="end"
                 >
                   Remove
@@ -195,20 +282,15 @@ const PreFlightChecklist: React.FC = () => {
           </IonList>
 
           <div className="add-task">
-            <input
-              type="text"
+            <IonInput
               value={newTask}
-              onChange={(e) => setNewTask(e.target.value)}
+              onIonChange={(e) => setNewTask(e.detail.value!)}
               placeholder="Enter new task"
             />
             <IonButton expand="block" onClick={addTask}>
               Add Task
             </IonButton>
           </div>
-
-          <IonButton expand="block" onClick={saveChecklist}>
-            Save Checklist
-          </IonButton>
         </div>
       </IonContent>
     </IonPage>

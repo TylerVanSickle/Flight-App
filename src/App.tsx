@@ -39,12 +39,13 @@ import SignIn from "./pages/SignIn";
 import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
+import PreFlightChecklist from "./pages/Checklist"; // Import your checklist page
 
 import { supabase } from "./supabaseClient";
 import type { Session } from "@supabase/supabase-js";
 
 import "./theme/variables.css";
-import PreFlightChecklist from "./pages/Checklist";
+
 setupIonicReact();
 
 const DARK_MODE_KEY = "dark-mode";
@@ -55,6 +56,7 @@ const routeTitles: Record<string, string> = {
   "/flights": "Flights",
   "/weightbalance": "Weight & Balance",
   "/crosswind": "Crosswind",
+  "/checklist": "Pre-Flight Checklist", // Add checklist title
 };
 
 const AppContent: React.FC = () => {
@@ -73,6 +75,7 @@ const AppContent: React.FC = () => {
   });
 
   const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState<boolean>(true); // Loading state
 
   useEffect(() => {
     if (isDarkMode) {
@@ -86,6 +89,7 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      setLoading(false); // Set loading false once session is fetched
     });
 
     const {
@@ -104,9 +108,14 @@ const AppContent: React.FC = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    // onAuthStateChange will redirect to "/"
+    history.push("/"); // Redirect to login after logout
   };
+
   const unauthenticatedAllowedPaths = ["/", "/reset-password"];
+
+  if (loading) {
+    return <div>Loading...</div>; // You can customize this loading state.
+  }
 
   if (!session && !unauthenticatedAllowedPaths.includes(location.pathname)) {
     return <Redirect to="/" />;
@@ -120,6 +129,7 @@ const AppContent: React.FC = () => {
   if (!session) {
     return <SignIn onSignInSuccess={() => history.push("/home")} />;
   }
+
   // Get current page title or fallback
   const currentPath = location.pathname.toLowerCase();
   const pageTitle = routeTitles[currentPath] || "Pilot Toolbox";
