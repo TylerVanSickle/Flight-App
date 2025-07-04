@@ -390,6 +390,7 @@ const Flights: React.FC = () => {
     <IonContent scrollY={true}>
       <div className="flights-page">
         <h2>Flight Log</h2>
+        <div className="page-subheading">Keep Track Of Your Flights!</div>
 
         {!showFlightForm && (
           <button

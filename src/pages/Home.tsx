@@ -17,10 +17,10 @@ const Home: React.FC = () => {
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen className="ion-padding">
-        <h2>Hello Pilot 👋</h2>
+        <h2>Hey There Aviator 👋</h2>
         <p>
-          Welcome back! Use the tabs below to manage your aircraft, flights,
-          weight & balance, and more.
+          Welcome to your dashboard where you can manage your fleet, view
+          analytics, and access all the features of your application.
         </p>
 
         {/* You can add cool cards, stats, or graphics here */}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { IonContent } from "@ionic/react";
 import CgEnvelopeChart from "../components/CgEnvelopeChart";
-
+import "./WeightBalance.css";
 type WBInput = {
   name: string;
   weight: number;
